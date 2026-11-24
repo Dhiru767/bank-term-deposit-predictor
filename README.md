@@ -16,6 +16,7 @@ The model is trained once, offline, by `ml/train_model.py` and saved with joblib
 - Result page with the probability and a plain-language result
 - Prediction history for each user, with pagination
 - About page that shows the real test results saved by the training script
+- Separate FastAPI prediction service, with automatic fallback to the local model if it is not running
 - Friendly error messages for invalid input, a missing model file and database errors
 - 56 automated tests
 
@@ -83,6 +84,8 @@ Citation: S. Moro, P. Cortez and P. Rita. "A Data-Driven Approach to Predict the
     term_deposit_predictor/
         manage.py
         requirements.txt
+        requirements-notebook.txt  extra packages for the training notebook
+        make_notebook.py         script that generates notebooks/train_model.ipynb
         README.md
         .env.example
         data/
@@ -94,14 +97,18 @@ Citation: S. Moro, P. Cortez and P. Rita. "A Data-Driven Approach to Predict the
                 model.joblib     trained pipeline
                 metrics.json     test results
         accounts/                register, login, logout
-            forms.py  views.py  urls.py  tests.py
+            models.py  forms.py  views.py  urls.py  admin.py  tests.py
         predictor/
             models.py            PredictionHistory
             forms.py             prediction form
             views.py  urls.py  admin.py
-            ml_service.py        loads the model and makes predictions
-            test_ml.py  test_views.py
+            ml_service.py        loads the model and makes predictions (local fallback)
+            api_client.py        calls the FastAPI prediction service
+            test_ml.py  test_views.py  test_api_client.py
             migrations/
+        api_service/
+            app.py               FastAPI service (GET /health, POST /predict)
+            test_app.py
         config/                  Django project settings and root URLs
         templates/               base, home, about, dashboard, predict, result, history
             accounts/            login, register
