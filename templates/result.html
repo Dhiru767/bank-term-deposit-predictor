@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+
+{% block title %}Result - Term Deposit Predictor{% endblock %}
+
+{% block content %}
+<h1 class="h3 mb-3">Prediction result</h1>
+
+<div class="card mb-4"><div class="card-body">
+  {% if record.prediction == "yes" %}
+    <div class="alert alert-success mb-3"><strong>{{ record.get_prediction_display }}</strong></div>
+  {% else %}
+    <div class="alert alert-secondary mb-3"><strong>{{ record.get_prediction_display }}</strong></div>
+  {% endif %}
+  <p class="mb-1">Estimated probability of subscribing: <strong>{{ record.probability_percent }}%</strong></p>
+  <div class="progress mb-3" role="progressbar" aria-valuenow="{{ record.probability_percent }}" aria-valuemin="0" aria-valuemax="100">
+    <div class="progress-bar" style="width: {{ record.probability_percent }}%"></div>
+  </div>
+  <p class="text-muted small mb-0">
+    This is an estimate from a statistical model trained on past marketing data.
+    It is not a guarantee about any individual client.
+  </p>
+</div></div>
+
+<h2 class="h5">Details you entered</h2>
+<table class="table table-sm bg-white">
+  <tbody>
+    <tr><th>Age</th><td>{{ record.age }}</td></tr>
+    <tr><th>Job</th><td>{{ record.job }}</td></tr>
+    <tr><th>Marital status</th><td>{{ record.marital }}</td></tr>
+    <tr><th>Education</th><td>{{ record.education }}</td></tr>
+    <tr><th>Housing loan</th><td>{{ record.housing }}</td></tr>
+    <tr><th>Personal loan</th><td>{{ record.loan }}</td></tr>
+    <tr><th>Contact type</th><td>{{ record.contact }}</td></tr>
+    <tr><th>Month</th><td>{{ record.month }}</td></tr>
+    <tr><th>Contacts in this campaign</th><td>{{ record.campaign }}</td></tr>
+    <tr><th>Contacts before</th><td>{{ record.previous }}</td></tr>
+    <tr><th>Previous outcome</th><td>{{ record.poutcome }}</td></tr>
+    <tr><th>Date</th><td>{{ record.created_at|date:"Y-m-d H:i" }}</td></tr>
+  </tbody>
+</table>
+
+<a class="btn btn-primary" href="{% url "predictor:predict" %}">New prediction</a>
+<a class="btn btn-outline-primary" href="{% url "predictor:history" %}">History</a>
+{% endblock %}

@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - Term Deposit Predictor{% endblock %}
+
+{% block content %}
+<h1 class="h3 mb-3">Welcome, {{ user.username }}</h1>
+<p class="text-muted">
+  This app uses a Random Forest model trained on the UCI Bank Marketing data
+  to estimate whether a client will subscribe to a term deposit.
+</p>
+
+<div class="row g-3 mb-4">
+  <div class="col-md-3 col-6">
+    <div class="card"><div class="card-body">
+      <div class="text-muted small">Your predictions</div>
+      <div class="fs-3">{{ total }}</div>
+    </div></div>
+  </div>
+  <div class="col-md-3 col-6">
+    <div class="card"><div class="card-body">
+      <div class="text-muted small">Likely to subscribe</div>
+      <div class="fs-3">{{ yes_count }}</div>
+    </div></div>
+  </div>
+  <div class="col-md-3 col-6">
+    <div class="card"><div class="card-body">
+      <div class="text-muted small">Unlikely to subscribe</div>
+      <div class="fs-3">{{ no_count }}</div>
+    </div></div>
+  </div>
+  <div class="col-md-3 col-6 d-flex align-items-center">
+    <a class="btn btn-primary w-100" href="{% url "predictor:predict" %}">New prediction</a>
+  </div>
+</div>
+
+<div class="d-flex justify-content-between align-items-center">
+  <h2 class="h5 mb-2">Recent predictions</h2>
+  {% if total > 5 %}<a href="{% url "predictor:history" %}" class="small">View all</a>{% endif %}
+</div>
+{% if recent %}
+  <div class="table-responsive">
+    <table class="table table-sm bg-white">
+      <thead><tr><th>Date</th><th>Job</th><th>Age</th><th>Result</th><th>Probability</th><th></th></tr></thead>
+      <tbody>
+      {% for p in recent %}
+        <tr>
+          <td>{{ p.created_at|date:"Y-m-d H:i" }}</td>
+          <td>{{ p.job }}</td>
+          <td>{{ p.age }}</td>
+          <td>{{ p.get_prediction_display }}</td>
+          <td>{{ p.probability_percent }}%</td>
+          <td><a href="{% url "predictor:result" p.pk %}">Details</a></td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+{% else %}
+  <p class="text-muted">No predictions yet. Click "New prediction" to make your first one.</p>
+{% endif %}
+{% endblock %}

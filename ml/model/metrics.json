@@ -1,0 +1,26 @@
+{
+  "metrics": {
+    "accuracy": 0.8541,
+    "precision": 0.394,
+    "recall": 0.5485,
+    "f1": 0.4586,
+    "roc_auc": 0.7737
+  },
+  "n_train": 32940,
+  "n_test": 8236,
+  "features": [
+    "age",
+    "campaign",
+    "previous",
+    "job",
+    "marital",
+    "education",
+    "housing",
+    "loan",
+    "contact",
+    "month",
+    "poutcome"
+  ],
+  "sklearn_version": "1.6.1",
+  "trained_at": "2026-10-04T15:28:06+00:00"
+}

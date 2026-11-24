@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+
+{% block title %}About - Term Deposit Predictor{% endblock %}
+
+{% block content %}
+<h1 class="h3 mb-3">About this project</h1>
+
+<div class="card mb-3"><div class="card-body">
+  <h2 class="h5">What it does</h2>
+  <p class="mb-0">
+    A registered user enters details about a bank client. A trained machine learning
+    model estimates the probability that the client will subscribe to a term deposit.
+    Each prediction is saved so it can be reviewed later.
+  </p>
+</div></div>
+
+<div class="card mb-3"><div class="card-body">
+  <h2 class="h5">Dataset</h2>
+  <p>
+    UCI Bank Marketing data (<code>bank-additional-full.csv</code>): phone marketing
+    campaigns of a Portuguese bank, recorded from May 2008 to November 2010.
+    It has 41,188 rows. The target is whether the client subscribed (yes / no),
+    so this is a binary classification problem.
+  </p>
+  <p class="mb-1"><strong>Input features used (11):</strong></p>
+  <ul class="mb-2">
+    <li>Numeric: age, contacts in this campaign, contacts before this campaign</li>
+    <li>Categorical: job, marital status, education, housing loan, personal loan,
+        contact type, month of contact, outcome of the previous campaign</li>
+  </ul>
+  <p class="small text-muted mb-0">
+    Source: Moro, Cortez and Rita (2014), "A Data-Driven Approach to Predict the Success
+    of Bank Telemarketing", Decision Support Systems.
+  </p>
+</div></div>
+
+<div class="card mb-3"><div class="card-body">
+  <h2 class="h5">Machine learning approach</h2>
+  <ul class="mb-0">
+    <li>Algorithm: Random Forest classifier (300 decision trees that vote).</li>
+    <li>Categorical fields are one-hot encoded; no scaling is needed for tree models.</li>
+    <li>Only about 11% of clients subscribed, so classes are balanced with class weights
+        and the data is split 80/20 with the same yes/no ratio in both parts.</li>
+    <li>The call duration is not used, because it is only known after the call ends.</li>
+    <li>The month list covers March to December, because the data has no calls in January or February.</li>
+  </ul>
+</div></div>
+
+<div class="card mb-3"><div class="card-body">
+  <h2 class="h5">Test results</h2>
+  {% if info %}
+    <p class="small text-muted">
+      Measured on {{ info.n_test }} clients the model had not seen during training
+      (trained on {{ info.n_train }}).
+    </p>
+    <table class="table table-sm w-auto">
+      <tbody>
+        <tr><th>Accuracy</th><td>{{ info.metrics.accuracy|floatformat:3 }}</td></tr>
+        <tr><th>Precision (subscribers)</th><td>{{ info.metrics.precision|floatformat:3 }}</td></tr>
+        <tr><th>Recall (subscribers)</th><td>{{ info.metrics.recall|floatformat:3 }}</td></tr>
+        <tr><th>F1 score</th><td>{{ info.metrics.f1|floatformat:3 }}</td></tr>
+        <tr><th>ROC-AUC</th><td>{{ info.metrics.roc_auc|floatformat:3 }}</td></tr>
+      </tbody>
+    </table>
+  {% else %}
+    <p class="text-muted mb-0">Results are not available yet. Train the model with <code>python ml/train_model.py</code>.</p>
+  {% endif %}
+</div></div>
+
+<div class="card mb-3"><div class="card-body">
+  <h2 class="h5">Limitations</h2>
+  <ul class="mb-0">
+    <li>Accuracy alone is misleading here: always answering "no" would already be right most of the time.
+        Precision, recall and ROC-AUC give a fairer picture.</li>
+    <li>The model finds many, but not all, subscribers and also produces false alarms.</li>
+    <li>The data comes from one bank in Portugal between 2008 and 2010 and may not match other markets or later years.</li>
+    <li>This is a learning project. Do not use it to make real decisions about people.</li>
+  </ul>
+</div></div>
+{% endblock %}

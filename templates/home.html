@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="p-5 mb-4 bg-white rounded-3 border">
+  <h1 class="display-6">Term Deposit Predictor</h1>
+  <p class="lead">
+    Enter a few details about a bank client and a machine learning model
+    estimates how likely they are to subscribe to a term deposit.
+  </p>
+  {% if user.is_authenticated %}
+    <a class="btn btn-primary" href="{% url "predictor:predict" %}">Make a prediction</a>
+    <a class="btn btn-outline-primary" href="{% url "predictor:dashboard" %}">Dashboard</a>
+  {% else %}
+    <a class="btn btn-primary" href="{% url "accounts:register" %}">Create an account</a>
+    <a class="btn btn-outline-primary" href="{% url "accounts:login" %}">Log in</a>
+  {% endif %}
+</div>
+
+<div class="row g-3">
+  <div class="col-md-4">
+    <div class="card h-100"><div class="card-body">
+      <h2 class="h6">1. Enter client details</h2>
+      <p class="small text-muted mb-0">Age, job, loans, contact history and a few more simple fields.</p>
+    </div></div>
+  </div>
+  <div class="col-md-4">
+    <div class="card h-100"><div class="card-body">
+      <h2 class="h6">2. Get an estimate</h2>
+      <p class="small text-muted mb-0">A Random Forest model returns a probability and a likely / unlikely result.</p>
+    </div></div>
+  </div>
+  <div class="col-md-4">
+    <div class="card h-100"><div class="card-body">
+      <h2 class="h6">3. Review your history</h2>
+      <p class="small text-muted mb-0">Every prediction is saved to your account so you can look back at it.</p>
+    </div></div>
+  </div>
+</div>
+{% endblock %}
