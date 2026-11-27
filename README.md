@@ -1,210 +1,250 @@
-# Term Deposit Predictor
+# Bank Term Deposit Predictor
 
-A Django + machine learning web application that estimates how likely a bank client is to subscribe to a term deposit.
+A full-stack machine learning application that estimates whether a bank customer is likely to subscribe to a term deposit. The project combines a Django web application, a trained Random Forest pipeline, a FastAPI prediction service, and a database-backed prediction history.
 
-## Description
+## Overview
 
-A registered user enters details about a bank client (age, job, loans, contact history and a few more fields). A trained Random Forest model returns a probability and a "likely / unlikely to subscribe" result. Every prediction is saved to the user's history in the database.
+Bank telemarketing campaigns are resource-intensive, while only a minority of contacted customers subscribe. This application demonstrates how a supervised learning model can estimate subscription likelihood from customer and campaign attributes, then make the prediction workflow accessible through an authenticated web interface.
 
-The model is trained once, offline, by `ml/train_model.py` and saved with joblib. Django only loads the saved file; it never trains anything.
+The model is trained offline by `ml/train_model.py`. The web application loads the saved model; it does not retrain the model during a user request.
 
-## Features
+## Application architecture
 
-- Register, log in and log out (Django's built-in authentication)
-- Login-protected dashboard with a welcome message, project description, statistics and recent predictions
-- Prediction form with validation for all 11 inputs
-- Result page with the probability and a plain-language result
-- Prediction history for each user, with pagination
-- About page that shows the real test results saved by the training script
-- Separate FastAPI prediction service, with automatic fallback to the local model if it is not running
-- Friendly error messages for invalid input, a missing model file and database errors
-- 56 automated tests
+```mermaid
+flowchart TD
+    U[User browser] --> D[Django web application]
+    D --> A[Authentication and input validation]
+    A --> C[FastAPI prediction API]
+    C --> M[Saved scikit-learn pipeline]
+    C --> D
+    D --> DB[(SQLite database)]
+    DB --> H[Per-user prediction history]
+    T[Offline training script] --> M
+    T --> R[Evaluation metrics]
+    R --> ABOUT[About page]
+```
 
-## Technology Stack
+If the FastAPI service is unavailable or returns an unexpected response, the Django application can fall back to the same saved local model.
 
-- Python 3.11 or newer (tested on 3.13)
-- Django 5.1.4
-- SQLite (development database)
-- HTML5, CSS3 and Bootstrap 5 (loaded from a CDN, so an internet connection is needed for styling)
-- pandas, NumPy, scikit-learn, joblib
-- python-dotenv (reads the `.env` file)
+## Key features
 
-## Machine Learning Approach
+- User registration, login, and logout using Django authentication.
+- Protected dashboard with recent activity and project information.
+- Prediction form with validation for 11 model inputs.
+- Prediction result with probability and a plain-language outcome.
+- Per-user prediction history with pagination.
+- About page displaying evaluation metrics.
+- Separate FastAPI service with `GET /health` and `POST /predict`.
+- Local model fallback when the API is unavailable.
+- Friendly handling of invalid inputs and missing model files.
+- 56 automated tests covering accounts, views, model service, API client, and API service.
 
-| Item | Choice |
+## Technology stack
+
+| Layer | Technologies |
 |---|---|
-| Problem type | Binary classification |
-| Target | `y`: did the client subscribe to a term deposit (yes / no) |
-| Algorithm | Random Forest (300 trees, `min_samples_leaf=5`, `class_weight="balanced"`) |
-| Numeric features | age, campaign, previous |
-| Categorical features | job, marital, education, housing, loan, contact, month, poutcome |
-| Encoding | One-hot encoding of categorical features |
-| Scaling | Not needed for tree-based models |
-| Missing values | Imputed inside the pipeline (median / most frequent); "unknown" is kept as its own category |
-| Split | Stratified 80% train / 20% test, `random_state=42` |
-| Saved file | One scikit-learn Pipeline (preprocessing + model) in `ml/model/model.joblib` |
+| Backend web application | Python, Django 5.1.4 |
+| Machine learning | pandas, NumPy, scikit-learn, joblib |
+| Model | Random Forest Classifier |
+| Prediction API | FastAPI, Pydantic, Uvicorn |
+| Database | SQLite (development) |
+| Frontend | HTML, CSS, Bootstrap 5 |
+| Configuration | python-dotenv |
+| Testing | Django automated tests / Python test suite |
 
-Why Random Forest: it handles a mix of numeric and categorical data, needs no scaling, copes with non-linear patterns and is easy to explain (many decision trees vote).
+## Machine learning approach
 
-Design decisions:
-
-- Only about 11% of clients subscribed, so the classes are weighted and the split is stratified. Accuracy alone is misleading here, so precision, recall, F1 and ROC-AUC are reported.
-- The `duration` column (call length) is not used, because it is only known after the call has ended and would leak the answer.
-- `pdays`, `day_of_week`, `default` and the economic indicator columns are left out so the web form only asks for things a user can reasonably know.
-- Rows that are identical in every original column are removed before splitting.
-
-### Results (one run of `ml/train_model.py`, 8,236 test clients)
-
-| Metric | Value |
+| Item | Implementation |
 |---|---|
+| Problem | Binary classification |
+| Target | Whether the customer subscribed (`yes` / `no`) |
+| Algorithm | Random Forest (300 trees) |
+| Class imbalance | `class_weight="balanced"` |
+| Numeric features | `age`, `campaign`, `previous` |
+| Categorical features | `job`, `marital`, `education`, `housing`, `loan`, `contact`, `month`, `poutcome` |
+| Preprocessing | Median / most-frequent imputation and one-hot encoding |
+| Split | Stratified 80/20 train/test split, `random_state=42` |
+| Saved artifact | Preprocessing + estimator pipeline in `ml/model/model.joblib` |
+
+The `duration` feature is deliberately excluded because call duration is only known after the call and would cause target leakage. Accuracy is not considered alone because the dataset is strongly imbalanced.
+
+### Reported evaluation results
+
+The following results are reported for one training run on 8,236 test records. They are project results, not a guarantee of performance on new or different banking data.
+
+| Metric | Result |
+|---|---:|
 | Accuracy | 0.854 |
-| Precision (subscribers) | 0.394 |
-| Recall (subscribers) | 0.548 |
+| Precision (subscriber class) | 0.394 |
+| Recall (subscriber class) | 0.548 |
 | F1 score | 0.459 |
 | ROC-AUC | 0.774 |
 
-Confusion matrix (rows = actual no/yes, columns = predicted no/yes): `[[6525, 783], [419, 509]]`.
+Confusion matrix (rows = actual no/yes; columns = predicted no/yes):
 
-The same figures are written to `ml/model/metrics.json` after every training run and are shown on the About page. If you retrain, use the numbers from your own run.
+```text
+[[6525, 783],
+ [ 419, 509]]
+```
+
+The training script writes the current run's results to `ml/model/metrics.json`.
 
 ## Dataset
 
-UCI Bank Marketing, file `bank-additional-full.csv` (included in `data/`).
+The project uses the UCI Bank Marketing `bank-additional-full.csv` dataset, containing telephone campaign data from a Portuguese bank (May 2008–November 2010).
 
-- Source: phone marketing campaigns of a Portuguese bank, May 2008 to November 2010
-- Records: 41,188 rows, 21 columns (20 inputs and the target `y`); 41,176 remain after removing 12 duplicate rows
-- Separator: semicolon (`;`)
-- Classes: about 11% "yes", 89% "no"
-- Months: the data contains calls from March to December only, so the form offers only those months
+- Original data: 41,188 records and 21 columns.
+- After removing 12 duplicate rows: 41,176 records.
+- Target distribution: approximately 11.3% yes and 88.7% no.
+- CSV separator: semicolon (`;`).
 
-Citation: S. Moro, P. Cortez and P. Rita. "A Data-Driven Approach to Predict the Success of Bank Telemarketing." Decision Support Systems, 2014.
+**Dataset reference:** S. Moro, P. Cortez and P. Rita, “A Data-Driven Approach to Predict the Success of Bank Telemarketing,” *Decision Support Systems*, 2014.
 
-## Project Structure
+## Project structure
 
-    term_deposit_predictor/
-        manage.py
-        requirements.txt
-        requirements-notebook.txt  extra packages for the training notebook
-        make_notebook.py         script that generates notebooks/train_model.ipynb
-        README.md
-        .env.example
-        data/
-            bank-additional-full.csv
-        ml/
-            config.py            features, choices and file paths (single source of truth)
-            train_model.py       trains and saves the model
-            model/
-                model.joblib     trained pipeline
-                metrics.json     test results
-        accounts/                register, login, logout
-            models.py  forms.py  views.py  urls.py  admin.py  tests.py
-        predictor/
-            models.py            PredictionHistory
-            forms.py             prediction form
-            views.py  urls.py  admin.py
-            ml_service.py        loads the model and makes predictions (local fallback)
-            api_client.py        calls the FastAPI prediction service
-            test_ml.py  test_views.py  test_api_client.py
-            migrations/
-        api_service/
-            app.py               FastAPI service (GET /health, POST /predict)
-            test_app.py
-        config/                  Django project settings and root URLs
-        templates/               base, home, about, dashboard, predict, result, history
-            accounts/            login, register
-        static/
-        notebooks/               training notebook
+```text
+manage.py
+requirements.txt
+.env.example
+data/
+  bank-additional-full.csv
+ml/
+  config.py
+  train_model.py
+  model/
+    model.joblib
+    metrics.json
+accounts/
+predictor/
+api_service/
+  app.py
+notebooks/
+templates/
+static/
+config/
+```
 
-## Installation
+## Run locally
 
-You need Python 3.11 or newer. Run all commands from the project root (the folder that contains `manage.py`).
+Run commands from the project root (the directory containing `manage.py`). Python 3.11 or newer is required.
 
-### Virtual Environment Setup
+### 1. Create and activate a virtual environment
 
-Linux / macOS:
+**Linux / macOS**
+```bash
+python3.11 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+```
 
-    python3.11 -m venv venv
-    source venv/bin/activate
-    pip install -r requirements.txt
+**Windows PowerShell**
+```powershell
+py -3.11 -m venv venv
+.\venv\Scripts\Activate.ps1
+pip install -r requirements.txt
+```
 
-Windows (PowerShell):
+### 2. Configure environment variables
 
-    py -3.13 -m venv venv
-    venv\Scripts\activate
-    pip install -r requirements.txt
+Create a local `.env` file using a fresh secret key:
 
-Conda:
+```bash
+python -c "import secrets; print('DJANGO_SECRET_KEY=' + secrets.token_urlsafe(50))"
+```
 
-    conda create -n project-env python=3.11
-    conda activate project-env
-    pip install -r requirements.txt
+Copy the generated value into `.env`, and add:
 
-### Environment Variables
+```dotenv
+DJANGO_DEBUG=True
+DJANGO_ALLOWED_HOSTS=127.0.0.1,localhost
+```
 
-The secret key is not stored in the code. Create a `.env` file with a random key (works on every system):
+Never commit `.env` or share its contents. Use `.env.example` as a template only.
 
-    python -c "import secrets; open('.env','w').write('DJANGO_SECRET_KEY=' + secrets.token_urlsafe(50) + '\nDJANGO_DEBUG=True\nDJANGO_ALLOWED_HOSTS=127.0.0.1,localhost\n')"
+### 3. Initialize the database
 
-Never share or commit `.env`. `.env.example` shows the format.
+```bash
+python manage.py migrate
+```
 
-### Database Setup
+### 4. Train the model (optional)
 
-    python manage.py migrate
+A trained model is included in `ml/model/`. To reproduce training:
 
-### Train the Model
+```bash
+python ml/train_model.py
+```
 
-A trained model is already included in `ml/model/`. To train it again (takes from several seconds to a couple of minutes):
+Restart the application after retraining because the model is loaded into the running process.
 
-    python ml/train_model.py
+### 5. Start the Django application
 
-Restart the server after retraining, because the model is loaded once.
+```bash
+python manage.py runserver
+```
 
-### Run the Application
+Open [http://127.0.0.1:8000/](http://127.0.0.1:8000/) and register an account to use the dashboard and prediction form.
 
-    python manage.py runserver
+### 6. Start the FastAPI service (optional separate terminal)
 
-Then open http://127.0.0.1:8000/ in your browser. Press Ctrl+C in the terminal to stop the server.
+From the project root:
 
-Using the app:
+```bash
+uvicorn api_service.app:app --host 127.0.0.1 --port 8001
+```
 
-1. Click Register and create an account.
-2. On the dashboard, click New prediction.
-3. Fill in the client details and press Predict.
-4. Read the result, then open History to see all your past predictions.
+- Health endpoint: [http://127.0.0.1:8001/health](http://127.0.0.1:8001/health)
+- Interactive API docs: [http://127.0.0.1:8001/docs](http://127.0.0.1:8001/docs)
 
-### Run the Tests
+The Django application is designed to fall back to its local model if the API is unavailable.
 
-    python manage.py test
+## Example workflow
 
-All 56 tests should pass. They use a temporary database, so your real data is not touched.
+1. Register a user account and sign in.
+2. Open the dashboard and choose **New prediction**.
+3. Enter the customer and campaign attributes in the form.
+4. Submit the form to receive a predicted subscription probability and outcome.
+5. Open **History** to review previous predictions associated with the signed-in account.
 
-### Admin Site (optional)
+The web form and API validate inputs against the project's configured feature choices. Use the form or the API documentation for the exact accepted request schema.
 
-    python manage.py createsuperuser
+## Tests
 
-Then open http://127.0.0.1:8000/admin/ to browse users and saved predictions.
+Run the automated test suite from the project root:
 
-## Troubleshooting
+```bash
+python manage.py test
+```
 
-- "DJANGO_SECRET_KEY is missing": create the `.env` file (see Environment Variables).
-- "The trained model file was not found": run `python ml/train_model.py`.
-- "ModuleNotFoundError": activate the virtual environment and run `pip install -r requirements.txt`.
-- "No module named 'ml'": run commands from the project root, not from inside a sub-folder.
-- Pages look unstyled: Bootstrap is loaded from the internet; check your connection.
-- A scikit-learn version warning when loading the model: retrain with `python ml/train_model.py` using your installed version.
+The accompanying project report records 56 automated tests across account workflows, views, model loading and prediction, API client behavior, and FastAPI endpoints.
 
-## Limitations
+## Screenshots and implementation evidence
 
-- ROC-AUC is moderate (0.774): the model finds many, but not all, subscribers and also produces false alarms.
-- The data comes from one Portuguese bank between 2008 and 2010 and may not match other markets or later years.
-- This is a learning project. Do not use it to make real decisions about people.
+Add screenshots from the actual running application to `docs/images/` and embed them below. Suggested evidence:
 
+- Registration / login page
+- Authenticated dashboard
+- Prediction input form
+- Prediction result page
+- Prediction history
+- FastAPI `/docs` and health response
 
-## Prediction API (FastAPI)
+Example Markdown once images have been committed:
 
-The app calls a separate FastAPI service to get predictions. Start it in a second terminal, from the project root:
+```md
+![Prediction dashboard](docs/images/dashboard.png)
+![Prediction result](docs/images/prediction-result.png)
+```
 
-    uvicorn api_service.app:app --port 8001
+Only add real, sanitized screenshots. Do not include passwords, secret keys, private user data, or customer information.
 
-Then start Django as usual (python manage.py runserver). Interactive API docs: http://127.0.0.1:8001/docs
-Endpoints: GET /health and POST /predict. If the API is not running, the web app falls back to the local model.
+## Limitations and future improvements
+
+- The reported ROC-AUC is 0.774; the model has both false positives and false negatives.
+- The dataset represents one Portuguese bank's historical campaigns from 2008–2010, so performance may not transfer to other banks, regions, or current campaigns.
+- The system is an educational project and should not be used as the sole basis for real customer targeting or financial decisions.
+- Future work could include external validation on newer data, model calibration, explainability, stronger deployment security, and monitoring for changes in incoming data and model performance.
+
+## Author
+
+Developed as an academic machine learning and web application project at Sunway College Kathmandu / Birmingham City University.
